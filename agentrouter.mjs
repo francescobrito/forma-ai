@@ -80,8 +80,14 @@ async function chatAdapter(request) {
             }
             if (!completed && !upstreamFailure) upstreamFailure = `AgentRouter ended the stream before completing a response (HTTP ${upstream.status}; events: ${[...types].join(', ') || 'none'}).`;
           } else {
-            const data = await copy.json();
-            if (data.error) upstreamFailure = cleanError(data.error.message || data.error, request.provider.key);
+            const text = await copy.text();
+            if (/^\s*(?:<!doctype html|<html)/i.test(text)) {
+              const title = text.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim().slice(0,90);
+              upstreamFailure = cleanError(`AgentRouter returned an HTML page instead of an API response (HTTP ${upstream.status}${title ? '; ' + title : ''}). Check the provider API address and gateway access.`, request.provider.key);
+            } else {
+              const data = JSON.parse(text);
+              if (data.error) upstreamFailure = cleanError(data.error.message || data.error, request.provider.key);
+            }
           }
         } catch (error) { upstreamFailure ||= cleanError(error.message, request.provider.key); }
       };
