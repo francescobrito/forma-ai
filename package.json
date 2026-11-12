@@ -1,0 +1,19 @@
+{
+  "name": "forma-ai-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A private, multi-provider AI chat workspace",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@openai/codex": "0.167.2",
+    "pg": "^8.16.3",
+    "undici": "^7.16.0"
+  }
+}

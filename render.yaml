@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: forma-ai
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 24.11.1
+      - key: DATABASE_URL
+        sync: false
