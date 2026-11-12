@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import { createRequire } from 'node:module';
-import { buildRequest, endpoint } from './api.mjs';
+import { buildRequest, endpoint, parseSSE } from './api.mjs';
 
 export function usesCodex(provider) {
   try { return provider.protocol !== 'anthropic' && new URL(provider.url).hostname === 'agentrouter.org'; } catch { return false; }
@@ -47,7 +47,7 @@ export function chatEnvironment(key) {
 
 async function chatAdapter(request) {
   const desired = buildRequest({ ...request.provider, protocol: 'responses' }, request.messages, request.model, request.systemPrompt, request.effort);
-  let used = false;
+  let used = false, upstreamFailure = '';
   const server = http.createServer(async (req, res) => {
     try {
       if (req.method !== 'POST' || req.url !== '/v1/responses' || req.headers.authorization !== 'Bearer ' + request.provider.key || used) {
@@ -62,8 +62,33 @@ async function chatAdapter(request) {
       const body = { ...native, ...desired.body, tools: [], tool_choice: 'none', parallel_tool_calls: false };
       const headers = Object.fromEntries(Object.entries(req.headers).filter(([name]) => !['host', 'connection', 'content-length', 'transfer-encoding', 'accept-encoding'].includes(name)));
       const upstream = await fetch(desired.url, { method: 'POST', headers, body: JSON.stringify(body), signal: request.signal, redirect: 'error' });
+      // Some gateways send a JSON error inside SSE without a Responses event
+      // type. The native client reports only a disconnected stream in that case.
+      // Retain the provider's error without retaining its response text or keys.
+      const inspect = async () => {
+        const copy = upstream.clone();
+        try {
+          if ((copy.headers.get('content-type') || '').includes('text/event-stream')) {
+            let completed = false; const types = new Set();
+            for await (const data of parseSSE(copy.body)) {
+              if (data === '[DONE]') continue;
+              let event; try { event = JSON.parse(data); } catch { continue; }
+              if (typeof event.type === 'string') types.add(event.type);
+              const error = event.error || event.response?.error;
+              if (error) upstreamFailure = cleanError(error.message || error, request.provider.key);
+              if (event.type === 'response.completed') completed = true;
+            }
+            if (!completed && !upstreamFailure) upstreamFailure = `AgentRouter ended the stream before completing a response (HTTP ${upstream.status}; events: ${[...types].join(', ') || 'none'}).`;
+          } else {
+            const data = await copy.json();
+            if (data.error) upstreamFailure = cleanError(data.error.message || data.error, request.provider.key);
+          }
+        } catch (error) { upstreamFailure ||= cleanError(error.message, request.provider.key); }
+      };
+      const inspection = inspect();
       res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') || 'application/json' });
       if (upstream.body) for await (const chunk of upstream.body) { if (res.destroyed) break; res.write(chunk); }
+      await inspection;
       res.end();
     } catch (error) {
       if (res.destroyed) return;
@@ -72,7 +97,7 @@ async function chatAdapter(request) {
     }
   });
   await new Promise((resolveListen, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolveListen); });
-  return { url: `http://127.0.0.1:${server.address().port}/v1`, close: async () => { server.closeAllConnections(); await new Promise(resolveClose => server.close(resolveClose)); } };
+  return { url: `http://127.0.0.1:${server.address().port}/v1`, failure: () => upstreamFailure, close: async () => { server.closeAllConnections(); await new Promise(resolveClose => server.close(resolveClose)); } };
 }
 
 export async function runAgentRouter(request, options = {}) {
@@ -117,7 +142,7 @@ export async function runAgentRouter(request, options = {}) {
     try { if (signal?.aborted) abort(); code = await exit; } finally { signal?.removeEventListener('abort', abort); }
     if (pending.trim()) event(pending);
     if (signal?.aborted) throw signal.reason || new Error('Request cancelled.');
-    if (failure || code !== 0 || !completed || !answer.trim()) throw new Error(cleanError(failure || stderr || 'The provider returned no answer.', provider.key));
+    if (failure || code !== 0 || !completed || !answer.trim()) throw new Error(cleanError(adapter.failure() || failure || stderr || 'The provider returned no answer.', provider.key));
     return answer;
   } finally {
     await adapter?.close();
