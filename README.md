@@ -2,7 +2,7 @@
 
 A ChatGPT-style chat website with multiple API providers, model switching, streamed responses, conversation history and search, Markdown/code formatting, exports, custom instructions, response styles, and light/dark themes. Responsive layouts include a phone navigation drawer, full-screen settings, touch controls, and a keyboard-aware composer.
 
-This version adds server accounts, password hashing, sign-in/sign-out, protected API endpoints, separate browser workspaces for each account, and Render deployment files. See [DEPLOY.md](DEPLOY.md) for current hosting instructions, PostgreSQL requirements, and account limitations. Chats and files stay on each device; they do not sync across devices. Password recovery and email verification are not included yet.
+This version adds login-and-password accounts without an email requirement, password hashing, sign-in/sign-out, protected API endpoints, separate browser workspaces for each account, and Render deployment files. Logins accept 3–32 letters, numbers, dots, hyphens and underscores; they are case-insensitive. Passwords require 12–128 characters. See [DEPLOY.md](DEPLOY.md) for current hosting instructions, PostgreSQL requirements, and account limitations. Chats and files stay on each device; they do not sync across devices. Password recovery is not included yet.
 
 ## Run
 
