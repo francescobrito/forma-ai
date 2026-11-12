@@ -50,6 +50,28 @@ test('provider failures redact credentials and attempted tool use fails closed',
   }) }), error => { assert.match(error.message, /Authentication failed/); assert.equal(error.message.includes(request.provider.key), false); return true; });
   await assert.rejects(runAgentRouter(request, { spawn: stub(({ child }) => { emit(child, { type: 'turn.started' }); emit(child, { type: 'item.started', item: { type: 'command_execution' } }); }) }), /Tools are disabled/);
 });
+
+test('gateway errors inside SSE survive the native client generic disconnect error', async () => {
+  const mock = http.createServer((req, res) => {
+    req.resume();
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.end('data: ' + JSON.stringify({ error: { message: 'Gateway quota exhausted: ' + request.provider.key } }) + '\n\n');
+  });
+  await new Promise(resolve => mock.listen(0, '127.0.0.1', resolve));
+  try {
+    await assert.rejects(runAgentRouter({ ...request, provider: { ...request.provider, url: `http://127.0.0.1:${mock.address().port}/v1` } }, { spawn: stub(async ({ child, args }) => {
+      const config = args.find(value => value.startsWith('model_providers.forma_agentrouter='));
+      const base = JSON.parse(config.match(/base_url=("[^"]+")/)[1]);
+      const response = await fetch(base + '/responses', { method: 'POST', headers: { Authorization: 'Bearer ' + request.provider.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ stream: true }) });
+      await response.text();
+      emit(child, { type: 'turn.failed', error: { message: 'stream disconnected before completion' } }); child.emit('close', 1);
+    }) }), error => {
+      assert.match(error.message, /Gateway quota exhausted/);
+      assert.equal(error.message.includes(request.provider.key), false);
+      return true;
+    });
+  } finally { await new Promise(resolve => mock.close(resolve)); }
+});
 test('installed official Codex sends no tools and receives a response through its own native client', async t => {
   const executable = await codexExecutable();
   try { await access(executable); } catch { t.skip('Official Codex executable is not installed at a known path.'); return; }
