@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fafbf9">
+  <meta name="description" content="Your ideas, your models. Forma is a private AI workspace that connects to your favorite providers.">
+  <title>Forma — Your AI workspace</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <section id="auth-screen" class="auth-screen" hidden aria-labelledby="auth-title">
+    <div class="auth-card"><div class="auth-top"><a class="brand" href="/">forma<span class="brand-period">.</span></a><button id="auth-language" type="button" class="text-button">Русский</button></div>
+      <div class="auth-mark">✧</div><p class="eyebrow" id="auth-caption">Your ideas. Your models. Your account.</p><h1 id="auth-title">Welcome back.</h1>
+      <form id="auth-form">
+        <div class="field" id="auth-name-field" hidden><label id="auth-name-label" for="auth-name">Your name</label><input id="auth-name" name="name" autocomplete="name" maxlength="80"></div>
+        <div class="field"><label id="auth-email-label" for="auth-email">Email</label><input id="auth-email" name="email" type="email" autocomplete="username" required maxlength="254"></div>
+        <div class="field"><label id="auth-password-label" for="auth-password">Password</label><input id="auth-password" name="password" type="password" autocomplete="current-password" required maxlength="128"><small id="auth-password-hint">For a new account, use at least 12 characters.</small></div>
+        <p id="auth-error" class="auth-error" role="alert"></p><button class="button primary auth-submit" id="auth-submit" type="submit">Sign in</button>
+      </form><button type="button" id="auth-switch" class="auth-switch">New here? Create an account</button><p class="auth-privacy" id="auth-privacy">Conversations and API keys are saved on this device for your account.</p>
+    </div>
+  </section>
+  <div class="app" id="app" hidden inert>
+    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+      <div class="brand-row"><a class="brand" href="/" aria-label="Forma home"><span class="brand-symbol" data-icon="sparkle"></span><span>forma<span class="brand-period">.</span></span></a><button class="icon-button collapse-button" id="collapse-sidebar" aria-label="Collapse sidebar" data-icon="panel"></button></div>
+      <button class="new-chat" id="new-chat"><span data-icon="plus"></span>New conversation<span class="shortcut">Ctrl K</span></button>
+      <button class="nav-item" id="search-chats"><span data-icon="search"></span>Search conversations<span class="shortcut">Ctrl /</span></button>
+      <div class="history-heading"><span>YOUR CONVERSATIONS</span><span id="chat-count">0</span></div>
+      <div id="chat-history" class="chat-history"></div>
+      <div class="sidebar-bottom">
+        <button class="connect-card" id="connect-card"><span class="connect-icon" data-icon="layers"></span><span><strong>Bring your own AI</strong><small>Connect your favorite models</small></span><span class="card-arrow" data-icon="arrow-up-right"></span></button>
+        <button class="nav-item" id="open-settings"><span data-icon="settings"></span>Settings</button>
+        <button class="nav-item" id="open-help"><span data-icon="help"></span>Help & shortcuts</button>
+        <div class="workspace-profile"><span class="avatar" id="account-avatar">Y</span><span class="account-details"><strong id="account-name" data-user-content>Your workspace</strong><small id="account-email" data-user-content></small></span><button id="logout" class="icon-button" type="button" aria-label="Sign out" title="Sign out">↪</button></div>
+      </div>
+    </aside>
+    <button class="sidebar-backdrop" id="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left"><button class="icon-button" id="show-sidebar" aria-label="Open sidebar" data-icon="panel" hidden></button><div class="model-switcher-wrap"><button id="model-switcher" class="model-switcher" aria-haspopup="true" aria-expanded="false"><span id="active-provider-label">Forma</span><span class="model-subtitle" id="active-model-label">Choose a model</span><span data-icon="chevron-down"></span></button><div class="model-menu popover" id="model-menu" hidden></div></div></div>
+        <div class="topbar-right"><span class="private-label"><span data-icon="lock"></span>Personal workspace</span><button class="icon-button" id="export-chat" aria-label="Export conversation" title="Export conversation" data-icon="download" hidden></button><button class="icon-button" id="theme-toggle" aria-label="Switch to dark theme" data-icon="moon"></button></div>
+      </header>
+      <div class="conversation-area" id="conversation-area">
+        <section class="welcome" id="welcome">
+          <div class="hero-mark" data-icon="sparkle"></div>
+          <p class="eyebrow">YOUR IDEAS. YOUR MODELS.</p>
+          <h1>Where ideas take shape.</h1>
+          <p class="hero-description">A little curiosity can go a long way.<br>What would you like to explore today?</p>
+          <div class="categories" id="categories" role="tablist" aria-label="Prompt categories"></div>
+          <div class="suggestions" id="suggestions" role="tabpanel" aria-label="Suggested prompts"></div>
+          <p class="welcome-note"><span class="tiny-sparkle" data-icon="sparkle"></span>One workspace. Any model. All yours.</p>
+        </section>
+        <section id="messages" class="messages" aria-label="Conversation" aria-live="polite" aria-relevant="additions" hidden></section>
+      </div>
+      <div class="composer-region">
+        <div id="connection-banner" class="connection-banner"><span class="banner-dot"></span><span>Make yourself at home. Connect a provider to start chatting.</span><button id="banner-connect">Connect provider<span data-icon="arrow-right"></span></button></div>
+        <form class="composer" id="chat-form">
+          <div id="attachment-list" class="attachment-list" aria-label="Attachments" hidden></div>
+          <textarea id="prompt" placeholder="Ask anything, or dream up something new…" rows="1" aria-label="Message" maxlength="100000"></textarea>
+          <div class="generation-controls"><button type="button" class="generation-option" id="response-style" aria-label="Response mode"><span data-icon="sliders"></span><span id="response-style-label">Concise</span><span data-icon="chevron-down"></span></button><button type="button" class="generation-option" id="reasoning-effort" aria-label="Reasoning effort"><span data-icon="lightbulb"></span><span>Effort:</span><strong id="reasoning-effort-label">Medium</strong><span data-icon="chevron-down"></span></button></div>
+          <div class="composer-toolbar"><div class="composer-options"><div class="attachment-control"><button type="button" class="icon-button attach-button" id="attach-button" aria-label="Add attachments" aria-expanded="false" aria-controls="attachment-menu" data-icon="plus"></button><div class="attachment-menu popover" id="attachment-menu" hidden><button type="button" id="attach-files"><span data-icon="file"></span><span><strong>Attach files</strong><small>Photos, PDF and text files</small></span></button><button type="button" id="paste-photo"><span data-icon="copy"></span><span><strong>Paste photo</strong><small>From your clipboard</small></span></button><button type="button" id="take-photo"><span data-icon="camera"></span><span><strong>Take a photo</strong><small>Use your phone camera</small></span></button><p>Paste a copied photo in the message field with Ctrl+V or your phone’s Paste command.</p><p>Up to 5 files. Photos are optimized before sending.</p></div></div><button type="button" class="composer-provider" id="composer-provider"><span data-icon="layers"></span><span id="composer-provider-name">Choose your AI</span><span data-icon="chevron-down"></span></button></div><button class="send-button" id="send-button" type="submit" aria-label="Send message" data-icon="arrow-up" disabled></button></div>
+          <p class="attachment-note" id="attachment-note" hidden>Choose a vision model for photos or a PDF-capable model for documents.</p>
+          <input id="file-picker" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/*,.md,.csv,.tsv,.json,.log,.js,.jsx,.ts,.tsx,.py,.html,.css,.xml,.yaml,.yml,.toml,.sql,.sh,.ini" hidden>
+          <input id="camera-picker" type="file" accept="image/*" capture="environment" hidden>
+        </form>
+        <p class="composer-footnote"><span>AI can make mistakes. Give important details a second look.</span><span class="enter-hint">↵ to send</span></p>
+      </div>
+    </main>
+  </div>
+  <dialog id="settings-dialog" class="settings-dialog">
+    <div class="settings-header"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Workspace settings</h2></div><button class="icon-button" id="close-settings" aria-label="Close settings" data-icon="x"></button></div>
+    <div class="settings-layout"><nav class="settings-nav" aria-label="Settings sections"><button class="settings-tab active" data-settings-tab="providers"><span data-icon="layers"></span>AI providers</button><button class="settings-tab" data-settings-tab="preferences"><span data-icon="sliders"></span>Preferences</button><button class="settings-tab" data-settings-tab="data"><span data-icon="database"></span>Your data</button><div class="settings-nav-note"><span data-icon="lock"></span><p>Your workspace lives on this device.</p></div></nav><div class="settings-content" id="settings-content"></div></div>
+  </dialog>
+  <dialog id="small-dialog" class="small-dialog"><div class="small-dialog-header"><h2 id="small-dialog-title"></h2><button class="icon-button" id="close-small-dialog" aria-label="Close dialog" data-icon="x"></button></div><div id="small-dialog-content"></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
