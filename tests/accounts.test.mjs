@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import http from 'node:http';
+import { DatabaseSync } from 'node:sqlite';
 import { createAccounts } from '../accounts.mjs';
 import { createServer } from '../server.mjs';
 import { publicAddress, validatePublicProvider } from '../provider-safety.mjs';
@@ -13,16 +14,42 @@ test('accounts and sessions survive a restart, reject wrong passwords, and revok
   const file = join(directory, 'accounts.sqlite');
   let accounts = await createAccounts({ file });
   try {
-    const user = await accounts.register({ name: 'Test User', email: 'TEST@example.com', password: 'test-only-long-password' });
-    assert.equal(user.email, 'test@example.com'); assert.equal(user.password_hash, undefined);
+    const user = await accounts.register({ username: ' TEST_User ', password: 'test-only-long-password' });
+    assert.equal(user.username, 'test_user'); assert.equal(user.name, 'test_user'); assert.equal(user.email, undefined); assert.equal(user.password_hash, undefined);
     const token = await accounts.issue(user);
-    await assert.rejects(accounts.login({ email: user.email, password: 'wrong' }), /Incorrect/);
-    await assert.rejects(accounts.register({ name: 'Duplicate', email: user.email, password: 'test-only-long-password' }), /already/);
+    await assert.rejects(accounts.login({ username: user.username, password: 'wrong' }), /Incorrect/);
+    await assert.rejects(accounts.register({ username: 'TEST_USER', password: 'test-only-long-password' }), /already/);
+    for (const username of ['ab', 'a'.repeat(33), 'not a login', 'test@example.com']) {
+      await assert.rejects(accounts.register({ username, password: 'test-only-long-password' }), /login/);
+    }
     await accounts.close(); accounts = await createAccounts({ file });
     assert.deepEqual(await accounts.identify(token), user);
-    assert.deepEqual(await accounts.login({ email: user.email, password: 'test-only-long-password' }), user);
+    assert.deepEqual(await accounts.login({ username: 'TEST_USER', password: 'test-only-long-password' }), user);
     await accounts.revoke(token); assert.equal(await accounts.identify(token), null);
     assert.equal(await accounts.identify('bad-cookie'), null);
+  } finally { await accounts.close(); await rm(directory, { recursive: true }); }
+});
+
+test('username migration preserves existing account hashes and sessions', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'forma-auth-migration-'));
+  const file = join(directory, 'accounts.sqlite');
+  let accounts = await createAccounts({ file });
+  try {
+    const user = await accounts.register({ username: 'Старый_логин', password: 'test-only-long-password' });
+    const token = await accounts.issue(user);
+    const legacy = await accounts.register({ username: 'legacy_user', password: 'test-only-long-password' });
+    const legacyToken = await accounts.issue(legacy);
+    const migratedLegacy = { ...legacy, username: 'legacy@example.com', name: 'Legacy user' };
+    await accounts.close();
+    const db = new DatabaseSync(file);
+    db.exec('ALTER TABLE forma_users RENAME COLUMN username TO email');
+    db.prepare('UPDATE forma_users SET email=?, name=? WHERE id=?').run(migratedLegacy.username, migratedLegacy.name, legacy.id);
+    db.close();
+    accounts = await createAccounts({ file });
+    assert.deepEqual(await accounts.identify(token), user);
+    assert.deepEqual(await accounts.login({ username: 'СТАРЫЙ_ЛОГИН', password: 'test-only-long-password' }), user);
+    assert.deepEqual(await accounts.identify(legacyToken), migratedLegacy);
+    assert.deepEqual(await accounts.login({ username: 'LEGACY@example.com', password: 'test-only-long-password' }), migratedLegacy);
   } finally { await accounts.close(); await rm(directory, { recursive: true }); }
 });
 
@@ -36,12 +63,12 @@ test('HTTP auth requires same-origin requests and protects all proxy endpoints',
   try {
     for (const path of ['/api/chat', '/api/models', '/api/check']) assert.equal((await post(path, {})).status, 401);
     assert.equal((await post('/api/auth/register', {}, '', 'https://evil.example')).status, 403);
-    const credentials = { name: 'API Test', email: 'http@example.com', password: 'test-only-long-password' };
+    const credentials = { username: 'http_test', password: 'test-only-long-password' };
     const response = await post('/api/auth/register', credentials); assert.equal(response.status, 201);
     const cookie = response.headers.get('set-cookie'); assert.match(cookie, /HttpOnly/); assert.match(cookie, /SameSite=Lax/);
     const user = (await response.json()).user;
     const me = await fetch(base + '/api/auth/me', { headers: { Cookie: cookie } }); assert.deepEqual((await me.json()).user, user);
-    const badLogin = await post('/api/auth/login', { email: credentials.email, password: 'wrong' }); assert.equal(badLogin.status, 401);
+    const badLogin = await post('/api/auth/login', { username: credentials.username, password: 'wrong' }); assert.equal(badLogin.status, 401);
     assert.equal((await post('/api/models', {}, cookie)).status, 400);
     assert.equal((await post('/api/auth/logout', {}, cookie)).status, 200);
     assert.equal((await post('/api/chat', {}, cookie)).status, 401);
@@ -59,7 +86,7 @@ test('hosted deployment validates host, uses Secure cookies, and blocks private 
   try {
     const response = await new Promise((resolve, reject) => {
       const request = http.request({ host: '127.0.0.1', port: server.address().port, path: '/api/auth/register', method: 'POST', headers: { Host: 'forma.example.com', Origin: 'https://forma.example.com', 'Content-Type': 'application/json' } }, result => { result.resume(); result.on('end', () => resolve(result)); });
-      request.on('error', reject); request.end(JSON.stringify({ name: 'Hosted', email: 'hosted@example.com', password: 'test-only-long-password' }));
+      request.on('error', reject); request.end(JSON.stringify({ username: 'hosted_test', password: 'test-only-long-password' }));
     });
     assert.equal(response.statusCode, 201); assert.match(response.headers['set-cookie'][0], /; Secure/);
     for (const ip of ['127.0.0.1', '10.0.0.1', '169.254.169.254', '172.16.0.1', '192.168.1.1', '100.64.0.1', '::1', '::ffff:127.0.0.1', 'fc00::1']) assert.equal(publicAddress(ip), false, ip);
