@@ -15,8 +15,7 @@
     <div class="auth-card"><div class="auth-top"><a class="brand" href="/">forma<span class="brand-period">.</span></a><button id="auth-language" type="button" class="text-button">Русский</button></div>
       <div class="auth-mark">✧</div><p class="eyebrow" id="auth-caption">Your ideas. Your models. Your account.</p><h1 id="auth-title">Welcome back.</h1>
       <form id="auth-form">
-        <div class="field" id="auth-name-field" hidden><label id="auth-name-label" for="auth-name">Your name</label><input id="auth-name" name="name" autocomplete="name" maxlength="80"></div>
-        <div class="field"><label id="auth-email-label" for="auth-email">Email</label><input id="auth-email" name="email" type="email" autocomplete="username" required maxlength="254"></div>
+        <div class="field"><label id="auth-username-label" for="auth-username">Login</label><input id="auth-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="32"><small id="auth-username-hint" hidden>3–32 letters, numbers, dots, hyphens or underscores.</small></div>
         <div class="field"><label id="auth-password-label" for="auth-password">Password</label><input id="auth-password" name="password" type="password" autocomplete="current-password" required maxlength="128"><small id="auth-password-hint">For a new account, use at least 12 characters.</small></div>
         <p id="auth-error" class="auth-error" role="alert"></p><button class="button primary auth-submit" id="auth-submit" type="submit">Sign in</button>
       </form><button type="button" id="auth-switch" class="auth-switch">New here? Create an account</button><p class="auth-privacy" id="auth-privacy">Conversations and API keys are saved on this device for your account.</p>
@@ -33,7 +32,7 @@
         <button class="connect-card" id="connect-card"><span class="connect-icon" data-icon="layers"></span><span><strong>Bring your own AI</strong><small>Connect your favorite models</small></span><span class="card-arrow" data-icon="arrow-up-right"></span></button>
         <button class="nav-item" id="open-settings"><span data-icon="settings"></span>Settings</button>
         <button class="nav-item" id="open-help"><span data-icon="help"></span>Help & shortcuts</button>
-        <div class="workspace-profile"><span class="avatar" id="account-avatar">Y</span><span class="account-details"><strong id="account-name" data-user-content>Your workspace</strong><small id="account-email" data-user-content></small></span><button id="logout" class="icon-button" type="button" aria-label="Sign out" title="Sign out">↪</button></div>
+        <div class="workspace-profile"><span class="avatar" id="account-avatar">Y</span><span class="account-details"><strong id="account-name" data-user-content>Your workspace</strong><small id="account-username" data-user-content></small></span><button id="logout" class="icon-button" type="button" aria-label="Sign out" title="Sign out">↪</button></div>
       </div>
     </aside>
     <button class="sidebar-backdrop" id="sidebar-backdrop" aria-label="Close navigation" hidden></button>

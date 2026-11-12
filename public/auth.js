@@ -19,21 +19,21 @@ export async function requireAccount() {
       let mode = 'login';
       function render() {
         $('#auth-title').textContent = t(mode === 'login' ? 'Welcome back.' : 'Create an account.');
-        $('#auth-name-field').hidden = mode !== 'register';
-        $('#auth-name').required = mode === 'register';
+        $('#auth-username').maxLength = mode === 'register' ? 32 : 254;
+        $('#auth-username-hint').hidden = mode !== 'register';
         $('#auth-password').autocomplete = mode === 'register' ? 'new-password' : 'current-password';
         $('#auth-password').minLength = mode === 'register' ? 12 : 1;
         $('#auth-submit').textContent = t(mode === 'login' ? 'Sign in' : 'Create account');
         $('#auth-switch').textContent = t(mode === 'login' ? 'New here? Create an account' : 'Already have an account? Sign in');
         $('#auth-language').textContent = getLanguage() === 'ru' ? 'English' : 'Русский';
-        for (const [id, text] of [['auth-email-label', 'Email'], ['auth-password-label', 'Password'], ['auth-name-label', 'Your name'], ['auth-caption', 'Your ideas. Your models. Your account.'], ['auth-privacy', 'Conversations and API keys are saved on this device for your account.'], ['auth-password-hint', 'For a new account, use at least 12 characters.']]) $('#' + id).textContent = t(text);
+        for (const [id, text] of [['auth-username-label', 'Login'], ['auth-username-hint', '3–32 letters, numbers, dots, hyphens or underscores.'], ['auth-password-label', 'Password'], ['auth-caption', 'Your ideas. Your models. Your account.'], ['auth-privacy', 'Conversations and API keys are saved on this device for your account.'], ['auth-password-hint', 'For a new account, use at least 12 characters.']]) $('#' + id).textContent = t(text);
       }
       $('#auth-language').onclick = () => { setLanguage(getLanguage() === 'ru' ? 'en' : 'ru'); render(); };
       $('#auth-switch').onclick = () => { mode = mode === 'login' ? 'register' : 'login'; $('#auth-error').textContent = ''; render(); };
       $('#auth-form').onsubmit = async event => {
         event.preventDefault(); $('#auth-submit').disabled = true; $('#auth-error').textContent = '';
         try {
-          const result = await request(mode, { email: $('#auth-email').value, password: $('#auth-password').value, name: $('#auth-name').value });
+          const result = await request(mode, { username: $('#auth-username').value, password: $('#auth-password').value });
           currentUser = result.user; $('#auth-password').value = ''; resolve();
         } catch (error) { $('#auth-error').textContent = t(error.message); }
         finally { $('#auth-submit').disabled = false; }
@@ -43,7 +43,7 @@ export async function requireAccount() {
   }
   $('#auth-screen').hidden = true; $('#app').inert = false; $('#app').hidden = false;
   $('#account-name').textContent = currentUser.name;
-  $('#account-email').textContent = currentUser.email;
+  $('#account-username').textContent = '@' + currentUser.username;
   $('#account-avatar').textContent = currentUser.name[0].toUpperCase();
   const logout = async () => {
     if ($('#logout').disabled) return;
